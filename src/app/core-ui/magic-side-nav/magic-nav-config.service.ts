@@ -159,14 +159,6 @@ export class MagicNavConfigService {
       // Separator
       { type: 'separator', id: 'sep-2' },
 
-      {
-        type: 'route',
-        id: 'visions',
-        label: '愿景',
-        icon: 'emoji_objects',
-        route: '/visions',
-      },
-
       // Projects Section
       {
         type: 'tree',

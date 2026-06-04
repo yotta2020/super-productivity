@@ -11,8 +11,13 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
 import { Project } from '../../features/project/project.model';
 import { selectAllProjectsExceptInbox } from '../../features/project/store/project.selectors';
+import {
+  MenuTreeKind,
+  MenuTreeTreeNode,
+} from '../../features/menu-tree/store/menu-tree.model';
+import { selectMenuTreeProjectTree } from '../../features/menu-tree/store/menu-tree.selectors';
 import { PersonalApiService } from '../../personal-server/personal-api.service';
-import { PersonalTimeEntry, Vision } from '../../personal-server/personal-api.model';
+import { PersonalTimeEntry } from '../../personal-server/personal-api.model';
 
 @Component({
   selector: 'time-entry-manager-page',
@@ -64,20 +69,23 @@ import { PersonalTimeEntry, Vision } from '../../personal-server/personal-api.mo
             />
           </label>
           <label>
-            项目
-            <select [(ngModel)]="newProjectId">
+            愿景
+            <select
+              [ngModel]="newVisionId"
+              (ngModelChange)="setNewVisionId($event)"
+            >
               <option value="">未分配</option>
-              @for (project of projects(); track project.id) {
-                <option [value]="project.id">{{ project.title }}</option>
+              @for (folder of folderOptions(); track folder.id) {
+                <option [value]="folder.id">{{ folder.label }}</option>
               }
             </select>
           </label>
           <label>
-            愿景
-            <select [(ngModel)]="newVisionId">
+            项目
+            <select [(ngModel)]="newProjectId">
               <option value="">未分配</option>
-              @for (vision of visions(); track vision.id) {
-                <option [value]="vision.id">{{ vision.title }}</option>
+              @for (project of projectsForVision(newVisionId); track project.id) {
+                <option [value]="project.id">{{ project.title }}</option>
               }
             </select>
           </label>
@@ -92,16 +100,19 @@ import { PersonalTimeEntry, Vision } from '../../personal-server/personal-api.mo
 
         <section class="batch-bar">
           <span>{{ selectedIds().length }} 条已选</span>
-          <select [(ngModel)]="batchProjectId">
-            <option value="">批量项目</option>
-            @for (project of projects(); track project.id) {
-              <option [value]="project.id">{{ project.title }}</option>
+          <select
+            [ngModel]="batchVisionId"
+            (ngModelChange)="setBatchVisionId($event)"
+          >
+            <option value="">批量愿景</option>
+            @for (folder of folderOptions(); track folder.id) {
+              <option [value]="folder.id">{{ folder.label }}</option>
             }
           </select>
-          <select [(ngModel)]="batchVisionId">
-            <option value="">批量愿景</option>
-            @for (vision of visions(); track vision.id) {
-              <option [value]="vision.id">{{ vision.title }}</option>
+          <select [(ngModel)]="batchProjectId">
+            <option value="">批量项目</option>
+            @for (project of projectsForVision(batchVisionId); track project.id) {
+              <option [value]="project.id">{{ project.title }}</option>
             }
           </select>
           <input
@@ -131,8 +142,8 @@ import { PersonalTimeEntry, Vision } from '../../personal-server/personal-api.mo
             <span>描述</span>
             <span>开始</span>
             <span>分钟</span>
-            <span>项目</span>
             <span>愿景</span>
+            <span>项目</span>
             <span>标签</span>
             <span></span>
           </div>
@@ -161,21 +172,21 @@ import { PersonalTimeEntry, Vision } from '../../personal-server/personal-api.mo
                 (ngModelChange)="setEntryDuration(entry.id, $event)"
               />
               <select
+                [ngModel]="entry.visionId || ''"
+                (ngModelChange)="setEntryVision(entry, $event)"
+              >
+                <option value="">未分配</option>
+                @for (folder of folderOptions(); track folder.id) {
+                  <option [value]="folder.id">{{ folder.label }}</option>
+                }
+              </select>
+              <select
                 [ngModel]="entry.projectId || ''"
                 (ngModelChange)="patchEntry(entry.id, { projectId: $event || null })"
               >
                 <option value="">未分配</option>
-                @for (project of projects(); track project.id) {
+                @for (project of projectsForVision(entry.visionId); track project.id) {
                   <option [value]="project.id">{{ project.title }}</option>
-                }
-              </select>
-              <select
-                [ngModel]="entry.visionId || ''"
-                (ngModelChange)="patchEntry(entry.id, { visionId: $event || null })"
-              >
-                <option value="">未分配</option>
-                @for (vision of visions(); track vision.id) {
-                  <option [value]="vision.id">{{ vision.title }}</option>
                 }
               </select>
               <input
@@ -383,7 +394,6 @@ export class TimeEntryManagerPageComponent {
   private readonly _store = inject(Store);
 
   readonly entries = signal<PersonalTimeEntry[]>([]);
-  readonly visions = signal<Vision[]>([]);
   readonly selected = signal<Record<string, boolean>>({});
   readonly selectedIds = computed(() =>
     Object.entries(this.selected())
@@ -394,6 +404,15 @@ export class TimeEntryManagerPageComponent {
   readonly projects = toSignal(this._store.select(selectAllProjectsExceptInbox), {
     initialValue: [] as Project[],
   });
+  readonly projectTree = toSignal(this._store.select(selectMenuTreeProjectTree), {
+    initialValue: [] as MenuTreeTreeNode[],
+  });
+  readonly folderOptions = computed(() =>
+    collectProjectFolderOptions(this.projectTree()),
+  );
+  private readonly _projectMap = computed(
+    () => new Map(this.projects().map((project) => [project.id, project])),
+  );
 
   newDescription = '';
   newDate = toLocalDate(new Date());
@@ -413,12 +432,8 @@ export class TimeEntryManagerPageComponent {
 
   async refresh(): Promise<void> {
     if (!this.api.isAuthenticated()) return;
-    const [entries, visions] = await Promise.all([
-      this.api.listTimeEntries(),
-      this.api.listVisions(),
-    ]);
+    const entries = await this.api.listTimeEntries();
     this.entries.set(entries);
-    this.visions.set(visions);
   }
 
   async createEntry(): Promise<void> {
@@ -464,6 +479,15 @@ export class TimeEntryManagerPageComponent {
     this.patchEntry(id, { tags: splitTags(value) });
   }
 
+  setEntryVision(entry: PersonalTimeEntry, value: string): void {
+    const visionId = value || null;
+    const projectId =
+      entry.projectId && this._isProjectInVision(entry.projectId, visionId)
+        ? entry.projectId
+        : null;
+    this.patchEntry(entry.id, { visionId, projectId });
+  }
+
   async saveEntry(entry: PersonalTimeEntry): Promise<void> {
     const updated = await this.api.updateTimeEntry(entry.id, entry);
     this.patchEntry(entry.id, updated);
@@ -505,7 +529,87 @@ export class TimeEntryManagerPageComponent {
     const date = new Date(value);
     return `${toLocalDate(date)}T${toLocalTime(date)}`;
   }
+
+  setNewVisionId(value: string): void {
+    this.newVisionId = value;
+    if (this.newProjectId && !this._isProjectInVision(this.newProjectId, value)) {
+      this.newProjectId = '';
+    }
+  }
+
+  setBatchVisionId(value: string): void {
+    this.batchVisionId = value;
+    if (this.batchProjectId && !this._isProjectInVision(this.batchProjectId, value)) {
+      this.batchProjectId = '';
+    }
+  }
+
+  projectsForVision(visionId: string | null | undefined): Project[] {
+    if (!visionId) {
+      return this.projects();
+    }
+
+    const folder = this.folderOptions().find((option) => option.id === visionId);
+    if (!folder) {
+      return this.projects();
+    }
+
+    const projectMap = this._projectMap();
+    return folder.projectIds
+      .map((projectId) => projectMap.get(projectId))
+      .filter((project): project is Project => !!project);
+  }
+
+  private _isProjectInVision(
+    projectId: string,
+    visionId: string | null | undefined,
+  ): boolean {
+    if (!visionId) {
+      return true;
+    }
+
+    const folder = this.folderOptions().find((option) => option.id === visionId);
+    return !folder || folder.projectIds.includes(projectId);
+  }
 }
+
+interface ProjectFolderOption {
+  id: string;
+  label: string;
+  projectIds: string[];
+}
+
+const collectProjectFolderOptions = (
+  nodes: MenuTreeTreeNode[],
+  depth = 0,
+): ProjectFolderOption[] =>
+  nodes.flatMap((node) => {
+    if (node.k !== MenuTreeKind.FOLDER) {
+      return [];
+    }
+
+    return [
+      {
+        id: node.id,
+        label: `${'  '.repeat(depth)}${node.name}`,
+        projectIds: collectProjectIds(node.children),
+      },
+      ...collectProjectFolderOptions(node.children, depth + 1),
+    ];
+  });
+
+const collectProjectIds = (nodes: MenuTreeTreeNode[]): string[] =>
+  nodes.flatMap((node) => {
+    if (node.k === MenuTreeKind.PROJECT) {
+      return [node.id];
+    }
+
+    if (node.k === MenuTreeKind.FOLDER) {
+      return collectProjectIds(node.children);
+    }
+
+    return [];
+  });
 
 const splitTags = (value: string): string[] =>
   value

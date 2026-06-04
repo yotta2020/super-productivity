@@ -9,7 +9,6 @@ export const DEFAULT_PROJECT_ICON = 'list_alt';
 export const _MISSING_PROJECT_ = 'missing project';
 
 export const DEFAULT_PROJECT: Project = {
-  visionId: null,
   isHiddenFromMenu: false,
   isArchived: false,
   isEnableBacklog: false,

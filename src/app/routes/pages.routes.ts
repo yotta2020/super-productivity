@@ -2,7 +2,6 @@ export { ArchivedProjectsPageComponent } from '../pages/archived-projects-page/a
 export { ConfigPageComponent } from '../pages/config-page/config-page.component';
 export { SearchPageComponent } from '../pages/search-page/search-page.component';
 export { ScheduledListPageComponent } from '../pages/scheduled-list-page/scheduled-list-page.component';
-export { VisionPageComponent } from '../pages/vision-page/vision-page.component';
 export { TimeEntryManagerPageComponent } from '../pages/time-entry-manager-page/time-entry-manager-page.component';
 export { PlannerComponent } from '../features/planner/planner.component';
 export { ScheduleComponent } from '../features/schedule/schedule/schedule.component';
