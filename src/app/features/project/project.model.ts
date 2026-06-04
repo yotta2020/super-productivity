@@ -11,6 +11,7 @@ export type RoundTimeOption = '5M' | 'QUARTER' | 'HALF' | 'HOUR' | null | undefi
 
 export interface ProjectBasicCfg {
   title: string;
+  visionId?: string | null;
   // TODO remove maybe
   isArchived?: boolean;
   isHiddenFromMenu?: boolean;

@@ -6,6 +6,15 @@
   height: 100%;
 }
 
+.personal-mode-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: rgba(0, 0, 0, 0.62);
+  font-size: 14px;
+  background: var(--bg);
+}
+
 .app-container {
   display: flex;
   height: 100vh;

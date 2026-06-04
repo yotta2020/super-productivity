@@ -159,6 +159,14 @@ export class MagicNavConfigService {
       // Separator
       { type: 'separator', id: 'sep-2' },
 
+      {
+        type: 'route',
+        id: 'visions',
+        label: '愿景',
+        icon: 'emoji_objects',
+        route: '/visions',
+      },
+
       // Projects Section
       {
         type: 'tree',
@@ -394,6 +402,14 @@ export class MagicNavConfigService {
         label: T.MH.PLANNER,
         icon: 'edit_calendar',
         route: '/planner',
+        featureConfigKey: 'isPlannerEnabled',
+      });
+      items.push({
+        type: 'route',
+        id: 'time-entries',
+        label: '时间记录',
+        icon: 'timer',
+        route: '/time-entries',
         featureConfigKey: 'isPlannerEnabled',
       });
     }

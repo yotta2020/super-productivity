@@ -81,6 +81,9 @@ import { OnboardingHintComponent } from './features/onboarding/onboarding-hint.c
 import { OnboardingHintService } from './features/onboarding/onboarding-hint.service';
 import { MaterialIconsLoaderService } from './ui/material-icons-loader.service';
 import { BrowserTitleService } from './core/browser-title/browser-title.service';
+import { PersonalApiService } from './personal-server/personal-api.service';
+import { PersonalDataBridgeService } from './personal-server/personal-data-bridge.service';
+import { PersonalLoginComponent } from './personal-server/personal-login.component';
 
 const ONBOARDING_PRESET_EXIT_DELAY = 1000;
 const ONBOARDING_ENTRANCE_COMPLETE_DELAY = 2000;
@@ -135,6 +138,7 @@ export const getBackgroundImageBlur = (context: WorkContextThemeSource): number 
     MobileBottomNavComponent,
     OnboardingPresetSelectionComponent,
     OnboardingHintComponent,
+    PersonalLoginComponent,
   ],
 })
 export class AppComponent implements OnDestroy, AfterViewInit {
@@ -173,6 +177,8 @@ export class AppComponent implements OnDestroy, AfterViewInit {
   readonly _store = inject(Store);
   private _sectionService = inject(SectionService);
   private _browserTitleService = inject(BrowserTitleService);
+  readonly personalApi = inject(PersonalApiService);
+  readonly personalDataBridge = inject(PersonalDataBridgeService);
   readonly T = T;
   readonly TODAY_TAG_ID = TODAY_TAG.id;
   readonly isShowMobileButtonNav = this.layoutService.isShowMobileBottomNav;
